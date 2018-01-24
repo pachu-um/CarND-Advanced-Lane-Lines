@@ -389,6 +389,19 @@ def processFrame(image):
         ym_per_pix = 30/720 # meters per pixel in y dimension
         xm_per_pix = 3.7/700 # meters per pixel in x dimension
         
+        left_fit_m = np.polyfit(l_y*ym_per_pix, l_x*xm_per_pix, 2)
+        right_fit_m = np.polyfit(r_y*ym_per_pix, r_x*xm_per_pix, 2)
+
+        # Calculate vehicle center
+        Max_x = image.shape[1]*xm_per_pix
+        Max_y = image.shape[0]*ym_per_pix
+        center_of_vehicle = Max_x / 2
+        
+        Left = left_fit_m[0]*Max_y**2 + left_fit_m[1]*Max_y + left_fit_m[2]
+        Right = right_fit_m[0]*Max_y**2 + right_fit_m[1]*Max_y + right_fit_m[2]
+        Middle = Left + (Right - Left)/2
+        dist_vehicle = Middle - center_of_vehicle
+        
         # Fit new polynomials to x,y in world space
         left_fit_cr = np.polyfit(ploty*ym_per_pix, left_fitx*xm_per_pix, 2)
         right_fit_cr = np.polyfit(ploty*ym_per_pix, right_fitx*xm_per_pix, 2)
@@ -397,7 +410,12 @@ def processFrame(image):
         right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
         # Now our radius of curvature is in meters
         #print(left_curverad, 'm', right_curverad, 'm')
-        cv2.putText(image,str(round(left_curverad,2))+' m '+str(round(right_curverad,2))+' m ', (10,100), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
+        cv2.putText(image,'Left curvature: {:.0f} m'.format(left_curverad), (10,100), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
+        cv2.putText(image,'Right curvature: {:.0f} m'.format(right_curverad), (10,200), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
+        if dist_vehicle>0:
+            cv2.putText(image,'Vehicle Position: {:.2f} m to right'.format(dist_vehicle), (10,300), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
+        else:
+            cv2.putText(image,'Vehicle Position: {:.2f} m to left'.format(-dist_vehicle), (10,300), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
         # Example values: 632.1 m    626.2 m
         # Combine the result with the original image
         result = cv2.addWeighted(image, 1, newwarp, 0.3, 0)
